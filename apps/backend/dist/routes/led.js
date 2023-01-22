@@ -11,20 +11,42 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const pg_1 = require("pg");
+const port = Number.isInteger(parseInt(process.env.DBPORT || ""))
+    ? parseInt(process.env.DBPORT || "")
+    : 5432;
 const pool = new pg_1.Pool({
-    host: "localhost",
-    port: 5432,
-    user: "postgres",
-    password: "postgres",
+    host: process.env.DBHOST,
+    port: port,
+    user: process.env.DBUSER,
+    password: process.env.DBPASS,
 });
 const router = (0, express_1.Router)();
+var StateEnum;
+(function (StateEnum) {
+    StateEnum[StateEnum["ON"] = 1] = "ON";
+    StateEnum[StateEnum["OFF"] = 10] = "OFF";
+    StateEnum[StateEnum["BLINKING"] = 20] = "BLINKING";
+})(StateEnum || (StateEnum = {}));
+const Log = (ledId, state) => __awaiter(void 0, void 0, void 0, function* () {
+    yield pool.connect((err, client) => __awaiter(void 0, void 0, void 0, function* () {
+        yield pool
+            .query("INSERT INTO log values (default, $1, $2, $3)", [
+            new Date().toISOString(),
+            ledId,
+            StateEnum[state],
+        ])
+            .then(() => {
+            client.release();
+        });
+    }));
+});
 // returns actual LED state.
-router.get("/state", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.get("/state", (_, res) => __awaiter(void 0, void 0, void 0, function* () {
     // try to connect to DB otherwise send error
     yield pool.connect((err, client) => __awaiter(void 0, void 0, void 0, function* () {
         if (err) {
             res.statusCode = 500;
-            res.send(err);
+            res.json({ error: "database connection failed" });
             return;
         }
         const data = yield pool.query("SELECT state FROM ledstate WHERE id=1;");
@@ -63,21 +85,30 @@ router.put("/state", (req, res) => __awaiter(void 0, void 0, void 0, function* (
             res.json({ error: "database connection failed" });
             return;
         }
-        // update state by data provided from the JSON and end the connection
-        yield pool
-            .query("UPDATE ledstate SET state=$1 WHERE id=1", [data.led_state])
-            .then(() => {
+        const db_data = yield (yield pool.query("SELECT state FROM ledstate WHERE id=1")).rows[0].state;
+        // check if provided data are different from the db ones, if its same, send 200 otherwise change it
+        if (db_data == data.led_state) {
             client.release();
             res.sendStatus(200);
-        });
+        }
+        else {
+            // update state by data provided from the JSON and end the connection
+            yield pool
+                .query("UPDATE ledstate SET state=$1 WHERE id=1", [data.led_state])
+                .then(() => __awaiter(void 0, void 0, void 0, function* () {
+                res.sendStatus(200);
+                const state = data.led_state;
+                yield Log(1, state);
+            }));
+        }
     }));
 }));
 // returns actually set blink interval
-router.get("/interval", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.get("/interval", (_, res) => __awaiter(void 0, void 0, void 0, function* () {
     yield pool.connect((err, client) => __awaiter(void 0, void 0, void 0, function* () {
         if (err) {
             res.statusCode = 500;
-            res.send(err);
+            res.json({ error: "database connection failed" });
             return;
         }
         yield pool
@@ -116,14 +147,21 @@ router.put("/interval", (req, res) => __awaiter(void 0, void 0, void 0, function
             res.json({ error: "database connection failed" });
             return;
         }
-        yield pool
-            .query("UPDATE ledconfiguration SET blink_rate=$1 WHERE id=1;", [
-            req.body.blink_interval,
-        ])
-            .then(() => {
-            client.release();
+        const db_data = yield (yield pool.query("SELECT blink_rate FROM ledconfiguration WHERE id=1")).rows[0].blink_rate;
+        if (db_data == data) {
             res.sendStatus(200);
-        });
+            client.release();
+        }
+        else {
+            yield pool
+                .query("UPDATE ledconfiguration SET blink_rate=$1 WHERE id=1;", [
+                req.body.blink_interval,
+            ])
+                .then(() => {
+                client.release();
+                res.sendStatus(200);
+            });
+        }
     }));
 }));
 module.exports = router;

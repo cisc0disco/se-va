@@ -1,11 +1,15 @@
 import { Request, Response, Router } from "express";
 import { Pool } from "pg";
 
+const port = Number.isInteger(parseInt(process.env.DBPORT || ""))
+  ? parseInt(process.env.DBPORT || "")
+  : 5432;
+
 const pool = new Pool({
-  host: "localhost",
-  port: 5432,
-  user: "postgres",
-  password: "postgres",
+  host: process.env.DBHOST,
+  port: port,
+  user: process.env.DBUSER,
+  password: process.env.DBPASS,
 });
 
 const router = Router();
@@ -18,13 +22,33 @@ type IntervalObject = {
   blink_interval: number;
 };
 
+enum StateEnum {
+  ON = 1,
+  OFF = 10,
+  BLINKING = 20,
+}
+
+const Log = async (ledId: number, state: keyof typeof StateEnum) => {
+  await pool.connect(async (err, client) => {
+    await pool
+      .query("INSERT INTO log values (default, $1, $2, $3)", [
+        new Date().toISOString(),
+        ledId,
+        StateEnum[state],
+      ])
+      .then(() => {
+        client.release();
+      });
+  });
+};
+
 // returns actual LED state.
-router.get("/state", async (req: Request, res: Response) => {
+router.get("/state", async (_, res: Response) => {
   // try to connect to DB otherwise send error
   await pool.connect(async (err, client) => {
     if (err) {
       res.statusCode = 500;
-      res.send(err);
+      res.json({ error: "database connection failed" });
       return;
     }
 
@@ -72,22 +96,35 @@ router.put("/state", async (req: Request, res: Response) => {
       return;
     }
 
-    // update state by data provided from the JSON and end the connection
-    await pool
-      .query("UPDATE ledstate SET state=$1 WHERE id=1", [data.led_state])
-      .then(() => {
-        client.release();
-        res.sendStatus(200);
-      });
+    const db_data = await (
+      await pool.query("SELECT state FROM ledstate WHERE id=1")
+    ).rows[0].state;
+
+    // check if provided data are different from the db ones, if its same, send 200 otherwise change it
+    if (db_data == data.led_state) {
+      client.release();
+      res.sendStatus(200);
+    } else {
+      // update state by data provided from the JSON and end the connection
+      await pool
+        .query("UPDATE ledstate SET state=$1 WHERE id=1", [data.led_state])
+        .then(async () => {
+          res.sendStatus(200);
+
+          const state: keyof typeof StateEnum =
+            data.led_state as keyof typeof StateEnum;
+          await Log(1, state);
+        });
+    }
   });
 });
 
 // returns actually set blink interval
-router.get("/interval", async (req: Request, res: Response) => {
+router.get("/interval", async (_, res: Response) => {
   await pool.connect(async (err, client) => {
     if (err) {
       res.statusCode = 500;
-      res.send(err);
+      res.json({ error: "database connection failed" });
       return;
     }
 
@@ -134,14 +171,23 @@ router.put("/interval", async (req: Request, res: Response) => {
       return;
     }
 
-    await pool
-      .query("UPDATE ledconfiguration SET blink_rate=$1 WHERE id=1;", [
-        req.body.blink_interval,
-      ])
-      .then(() => {
-        client.release();
-        res.sendStatus(200);
-      });
+    const db_data = await (
+      await pool.query("SELECT blink_rate FROM ledconfiguration WHERE id=1")
+    ).rows[0].blink_rate;
+
+    if (db_data == data) {
+      res.sendStatus(200);
+      client.release();
+    } else {
+      await pool
+        .query("UPDATE ledconfiguration SET blink_rate=$1 WHERE id=1;", [
+          req.body.blink_interval,
+        ])
+        .then(() => {
+          client.release();
+          res.sendStatus(200);
+        });
+    }
   });
 });
 

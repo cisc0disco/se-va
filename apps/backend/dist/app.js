@@ -9,7 +9,7 @@ const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const morgan_1 = __importDefault(require("morgan"));
 require("dotenv").config();
 var ledRouter = require("./routes/led");
-var logRouter = require("./routes/led");
+var logRouter = require("./routes/logs");
 var app = (0, express_1.default)();
 // send error if the JSON is invalid
 const customJsonError = (err, req, res, next) => {

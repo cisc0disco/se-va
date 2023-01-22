@@ -5,7 +5,7 @@ import logger from "morgan";
 require("dotenv").config();
 
 var ledRouter = require("./routes/led");
-var logRouter = require("./routes/led");
+var logRouter = require("./routes/logs");
 
 var app = express();
 
