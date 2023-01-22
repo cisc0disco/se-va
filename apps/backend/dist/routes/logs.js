@@ -36,6 +36,12 @@ const FormatLogs = (logs) => {
         return row;
     });
 };
+const isIsoDate = (str) => {
+    if (!/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z/.test(str))
+        return false;
+    const d = new Date(str);
+    return d instanceof Date && d.toISOString() === str; // valid date
+};
 // returns logs by defined FROM/TO parameters
 router.get("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b;
@@ -63,20 +69,27 @@ router.get("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
                 }
             }
         }
-    // try to parse the dates otherwise send error that they're not valid
-    try {
-        const query = req.query;
-        if (query.from) {
+    // try to validate the dates otherwise send error that they're not valid
+    const query = req.query;
+    if (query.from) {
+        if (isIsoDate(query.from)) {
             from = new Date(query.from);
         }
-        if (query.to) {
-            to = new Date(query.to);
+        else {
+            res.json({ error: "invalid time format" });
+            return;
         }
     }
-    catch (error) {
-        res.json({ error: "invalid time format" });
-        return;
+    if (query.to) {
+        if (isIsoDate(query.to)) {
+            to = new Date(query.to);
+        }
+        else {
+            res.json({ error: "invalid time format" });
+            return;
+        }
     }
+    // connect to database via pool
     yield pool.connect((err, client) => __awaiter(void 0, void 0, void 0, function* () {
         if (err) {
             res.json({ error: err });

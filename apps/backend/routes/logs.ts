@@ -35,6 +35,12 @@ const FormatLogs = (logs: Array<LedJSON>) => {
   });
 };
 
+const isIsoDate = (str: string) => {
+  if (!/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z/.test(str)) return false;
+  const d = new Date(str);
+  return d instanceof Date && d.toISOString() === str; // valid date
+};
+
 // returns logs by defined FROM/TO parameters
 router.get("/", async (req: Request, res: Response) => {
   var from: Date;
@@ -68,22 +74,28 @@ router.get("/", async (req: Request, res: Response) => {
       }
     }
 
-  // try to parse the dates otherwise send error that they're not valid
-  try {
-    const query: Query = req.query;
+  // try to validate the dates otherwise send error that they're not valid
+  const query: Query = req.query;
 
-    if (query.from) {
+  if (query.from) {
+    if (isIsoDate(query.from)) {
       from = new Date(query.from!);
+    } else {
+      res.json({ error: "invalid time format" });
+      return;
     }
-
-    if (query.to) {
-      to = new Date(query.to!);
-    }
-  } catch (error) {
-    res.json({ error: "invalid time format" });
-    return;
   }
 
+  if (query.to) {
+    if (isIsoDate(query.to)) {
+      to = new Date(query.to!);
+    } else {
+      res.json({ error: "invalid time format" });
+      return;
+    }
+  }
+
+  // connect to database via pool
   await pool.connect(async (err, client) => {
     if (err) {
       res.json({ error: err });
