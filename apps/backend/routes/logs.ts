@@ -150,7 +150,6 @@ router.get("/", async (req: Request, res: Response) => {
           )
         ).rows
       );
-
       res.json(result);
       return;
     }
