@@ -2,6 +2,7 @@ import express, { NextFunction, Response, Request } from "express";
 import path from "path";
 import cookieParser from "cookie-parser";
 import logger from "morgan";
+import cors from "cors";
 require("dotenv").config();
 
 var ledRouter = require("./routes/led");
@@ -21,6 +22,7 @@ const customJsonError = (
 };
 
 app.use(logger("dev"));
+app.use(cors());
 app.use(express.json());
 app.use(customJsonError);
 app.use(express.urlencoded({ extended: false }));

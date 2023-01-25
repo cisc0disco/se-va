@@ -8,9 +8,7 @@
     "lint": {
       "outputs": []
     },
-    "dev  ": {
-      "cache": false
-    },
+    "dev": {},
     "start": {
       "cache": false
     }

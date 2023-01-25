@@ -7,6 +7,7 @@ const express_1 = __importDefault(require("express"));
 const path_1 = __importDefault(require("path"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const morgan_1 = __importDefault(require("morgan"));
+const cors_1 = __importDefault(require("cors"));
 require("dotenv").config();
 var ledRouter = require("./routes/led");
 var logRouter = require("./routes/logs");
@@ -17,6 +18,7 @@ const customJsonError = (err, req, res, next) => {
     res.send({ error: "invalid json format" });
 };
 app.use((0, morgan_1.default)("dev"));
+app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 app.use(customJsonError);
 app.use(express_1.default.urlencoded({ extended: false }));
