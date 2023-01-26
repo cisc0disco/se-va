@@ -1,0 +1,78 @@
+.main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+
+.app {
+  height: 40em;
+  width: 60%;
+  background-color: white;
+  border-radius: 1em;
+  display: flex;
+}
+
+.app > * {
+  color: black;
+}
+
+.menu {
+  list-style: none;
+  border-radius: 1em;
+  margin: 1em;
+  outline: 1px solid lightgrey;
+  height: calc(4 * 2.5em);
+  box-shadow: rgba(0, 0, 0, 0.4) 3px 3px 3px;
+}
+
+.menu > li {
+  padding-left: 1em;
+  padding: 0.5em 0 0.5em 0.5em;
+  width: 15em;
+  height: 2.5em;
+  border-bottom: 0.5px solid lightgrey;
+}
+
+.menu > li:last-child {
+  border-bottom-left-radius: inherit;
+  border-bottom-right-radius: inherit;
+  border-bottom: none;
+}
+
+.menu > li:not(:first-child):hover:not(.active) {
+  color: white;
+  background-color: #4771dc;
+  transition: background-color 0.3s ease-in-out;
+  cursor: pointer;
+}
+
+.menu > li:first-child {
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+  background-color: lightgray;
+}
+
+.active {
+  background-color: #0f3491;
+  color: white;
+  transition: background-color 0.3s ease-in-out;
+}
+
+.content {
+  width: 90%;
+  height: 95%;
+  border: 1px solid black;
+  margin: 1em;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+@media only screen and (max-width: 1200px) {
+  .app {
+    height: 90%;
+    width: 90%;
+  }
+}
